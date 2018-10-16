@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>40-js</title>
+    <style>
+        *{margin:0;padding:0;}
+        body{
+            background: #eef3fa;
+        }
+        #box{
+            position: relative;
+            width: 800px;
+            height: auto;
+            margin: 50px auto;
+        }
+        #box ul{
+            list-style: none;
+            width: 105%;
+            overflow: hidden;
+        }
+        #box ul li{
+            float: left;
+            width: 250px;
+            margin: 0 10px 10px 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 10px;
+        }
+        #box ul li img{
+            width: 100%;
+        }
+        #box button{
+            position: fixed;
+            top:50%;
+            margin-top: -10px;
+        }
+        #box button.left{
+            left: 50%;
+            margin-left: -500px;
+        }
+        #box button.right{
+            right: 50%;
+            margin-right: -500px;
+        }
+    </style>
+    <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+</head>
+<body>
+<div id="box">
+    <ul id="list"></ul>
+    <button class="left" type="button" title="(慎点次数有限)">上一页</button>
+    <button	class="right" type="button" title="(慎点次数有限)">下一页</button>
+</div>
+<script>
+
+    (function(){
+        let $oBox = $("#box");
+        let list = document.getElementById("list");
+        let nextBtn = [...document.getElementsByTagName("button")];
+        let url = "https://route.showapi.com/852-2?";
+        let index = 1;
+
+        //上下页跳转
+        nextBtn.forEach( (v,i) => {
+            nextBtn[i].onclick = () => {
+                if(i===1){
+                    index ++
+                    index %= 10
+                }else{
+                    index -- ;
+                    index = Math.max(0,index)
+                }
+                if(index===0)return;
+                change(index)
+            }
+        })
+        change(1)
+        function change(index){
+		  //原生Ajax
+            let data = {
+                    "showapi_appid" : "77603",
+                    "showapi_timestamp" : Date.now(),
+                    "showapi_sign" : "b0647d80b35a4664aafdfea88ce6bbed",
+                    "maxResult" : "20" ,
+                    "type" : "4001" ,
+                    "page" : index
+                 }
+                 for(let key in data){
+                      url += `&${key}=${data[key]}`
+                 }
+            // console.log(url);
+            let xhr = new XMLHttpRequest()
+                 xhr.open("GET",url)
+                 xhr.send()
+                 xhr.onreadystatechange = function(){
+                      if(this.readyState !== 4) return
+                      if(this.status >= 200 && this.status<300 || this.status == 304){
+                           console.log(JSON.parse(this.responseText).showapi_res_body.pagebean)
+                           show(JSON.parse(this.responseText).showapi_res_body.pagebean)
+                      }
+              }
+           //原生Ajax --- end
+
+            function show({contentlist:msg}){		//解构赋值传参
+                let str = "";
+                let aIMG = [];
+
+                msg.forEach( (v,i) => {
+                    aIMG[i] = new Image();
+                    aIMG[i].src = v.list[0].middle;
+                    str += `<li><img src=${ v.list[0].middle}><p>${v.title}</p></li>`;
+                })
+                list.innerHTML = str;
+                waterFall(aIMG)
+            }
+
+        }
+
+        //瀑布流函数，未完善
+        function waterFall(aIMG){
+            let $ali = $("#list > li");			//获取list后代
+            let w = $ali.eq(0).outerWidth(true);	//单个盒子列宽
+            let colus = Math.ceil($oBox.width()/w)  //oBox盒子内的总列数
+
+            let timer;
+            let flag = 0;
+            let hArr = [];		         //定义空数组存储
+
+            $ali.css("display","none");     //搭配fadeIn() 实现淡入淡出效果
+
+            function delay(){
+                clearInterval(timer)
+                $ali.each( (i,v) =>{	//jq中的each方法 第一个参数是下标
+                    let h = $ali.eq(i).outerHeight(true);		//获取盒子高
+                    if(i<colus){
+                        hArr[i] = h;
+                        $(v).css({
+                            position : "absolute",
+                            left : i*w
+                        })
+                    }else{
+                        let minH = Math.min(...hArr);		//拆分数字再比较
+                        let minIdx = $.inArray(minH,hArr);	//$.inArray方法，找出数组中某个值的下标
+                        $(v).css({
+                            position : "absolute",
+                            top : minH,
+                            left : minIdx*w
+                        });
+                        hArr[minIdx] += $ali.eq(i).outerHeight(true)
+                    }
+
+                    aIMG[flag].src.onload = function(){
+                        flag ++
+                        if(flag>=19)clearInterval(timer)
+                    }
+                    console.log(1)
+                });
+                return delay
+            }
+
+            timer = setInterval( delay() ,300);          //利用定时器解决图片不能预加载的问题
+
+
+            $ali.fadeIn()
+        }
+
+    })();
+    /*            //用jquery没问题
+                $.ajax({
+                    url: 'https://route.showapi.com/852-2',
+                    type: 'GET',
+                    dataType : 'json',
+                    data : {
+                        "showapi_appid" : "77603",
+                        "showapi_timestamp" : Date.now(),
+                        "showapi_sign" : "b0647d80b35a4664aafdfea88ce6bbed",
+                        "maxResult" : "20" ,
+                        "type" : "4001" ,           //必传参数
+                        "page" : index
+                    },
+                    success(msg){
+                        // console.log(msg)
+                        show(msg.showapi_res_body.pagebean)
+                    }
+                })*/
+</script>
+</body>
+</html>
